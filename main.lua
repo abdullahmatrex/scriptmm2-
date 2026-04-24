@@ -1,4 +1,4 @@
--- [[ CYBER DRAGON V24 – FINAL SUPREME GOLD EDITION ]]
+-- [[ CYBER DRAGON V24 – FINAL ULTIMATE EDITION ]]
 -- المطور: عبدالله
 -- TikTok: 7_v4n3x | Telegram: abood_7ro
 
@@ -8,7 +8,6 @@ local UIS = game:GetService("UserInputService")
 local Lighting = game:GetService("Lighting")
 local Workspace = game:GetService("Workspace")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
-local TweenService = game:GetService("TweenService")
 local TeleportService = game:GetService("TeleportService")
 local HttpService = game:GetService("HttpService")
 local Stats = game:GetService("Stats")
@@ -18,7 +17,7 @@ local Player = Players.LocalPlayer
 local PlayerGui = Player:WaitForChild("PlayerGui")
 
 -- ==============================================
--- نظام الحماية المطلق (Supreme Shield)
+-- نظام الحماية المطلق (Supreme Shield) + تجاوز الماب
 -- ==============================================
 local SafeCFrame = CFrame.new(0, 1500, 0)
 local LogGui = Instance.new("ScreenGui", PlayerGui)
@@ -35,38 +34,54 @@ local function AddLog(msg)
     lbl.Font = Enum.Font.Gotham; lbl.TextSize = 9; lbl.TextXAlignment = Enum.TextXAlignment.Left
 end
 
--- الحماية من الطرد (Anti-Kick + CheaterCheck) + تزييف القيم
-pcall(function()
+-- تجاوز حماية الماب (BypassMapSecurity)
+local function BypassMapSecurity()
     local mt = getrawmetatable(game)
-    setreadonly(mt, false)
-    local old_nc = mt.__namecall
     local old_idx = mt.__index
-    
+    local old_nc = mt.__namecall
+    setreadonly(mt, false)
+
+    -- خداع رادار السرعة
     mt.__index = newcclosure(function(t, k)
-        if not checkcaller() then
-            if k == "WalkSpeed" and t:IsA("Humanoid") then return 16 end
-            if k == "JumpPower" and t:IsA("Humanoid") then return 50 end
-            if k == "Health" and t:IsA("Humanoid") and Features.GodMode then return 100 end
+        if not checkcaller() and t:IsA("Humanoid") and (k == "WalkSpeed" or k == "JumpPower") then
+            if k == "WalkSpeed" then return 16 end
+            if k == "JumpPower" then return 50 end
         end
         return old_idx(t, k)
     end)
 
+    -- تعطيل بلاغات السيرفر
     mt.__namecall = newcclosure(function(self, ...)
-        local args = {...}
         local method = getnamecallmethod()
+        local args = {...}
 
-        if method == "FireServer" and tostring(self) == "MainEvent" then
-            if args[1] == "Check" or args[1] == "Stomp" then return nil end
+        if method == "FireServer" then
+            local remoteName = tostring(self)
+            if remoteName == "MainEvent" or remoteName == "CoreEvent" or remoteName == "Kk" then
+                if args[1] == "Check" or args[1] == "Speed" or args[1] == "Teleport" then
+                    return nil
+                end
+            end
         end
-
+        
         if method == "Kick" or method == "kick" then
             AddLog("Anti-Kick: Blocked")
             return nil
         end
+
         return old_nc(self, unpack(args))
     end)
+
     setreadonly(mt, true)
-end)
+    
+    -- إخفاء السكربت عن سجلات الماب
+    game:GetService("LogService").MessageOut:Connect(function(msg, type)
+        if msg:find("Cyber Dragon") or msg:find("Dragon") then
+            return nil
+        end
+    end)
+end
+BypassMapSecurity()
 
 local function SupremeShield()
     pcall(function()
@@ -97,11 +112,10 @@ local Features = {
     AutoFarm = false, GodMode = false, RGB = false,
     PanicHide = false, VisualTrails = false,
     AimLockBelly = false, AntiLag = false, Blur = false,
-    FakeDeath = false, AntiAFK = false, FPSUnlocker = false,
-    Invisible = false, HideName = false, SmartESP = false
+    FakeDeath = false, AntiAFK = false, FPSUnlocker = false
 }
 local flyConn, moveDir, savedPos = nil, Vector3.zero, nil
-local farmSpeed = 300 -- 5x أسرع من المشي العادي
+local jumpedCoins = {}
 
 local function GetChar() return Player.Character end
 local function GetRoot() return GetChar() and GetChar():FindFirstChild("HumanoidRootPart") end
@@ -140,51 +154,72 @@ local function GetSheriff()
     return nil
 end
 
--- AUTO FARM الذهبي (يمشي بسرعة 5x ثم يقفز للالتقاط)
+-- ==============================================
+-- AUTO FARM الذكي (يمشي، يقفز مرة واحدة، يتحرك حول العملة)
+-- ==============================================
 local function SmartCoinFarm()
     if not Features.AutoFarm then return end
+    
     local root = GetRoot()
     local hum = GetHum()
     if not root or not hum then return end
-    
-    hum.WalkSpeed = farmSpeed
-    
-    local nearest, nearestDist = nil, math.huge
+
+    local nearestCoin = nil
+    local shortestDistance = math.huge
+
     for _, v in pairs(Workspace:GetDescendants()) do
-        if v:IsA("BasePart") and (v.Name == "Coin" or v.Name == "CoinContainer" or v.Name:find("Coin")) then
-            local dist = (root.Position - v.Position).Magnitude
-            if dist < nearestDist then nearestDist = dist; nearest = v end
+        if v:IsA("BasePart") and (v.Name == "Coin" or v.Name == "CoinContainer") then
+            local distance = (root.Position - v.Position).Magnitude
+            if distance < shortestDistance then
+                shortestDistance = distance
+                nearestCoin = v
+            end
         end
     end
-    
-    if nearest then
-        hum:MoveTo(nearest.Position + Vector3.new(0, 2, 0))
-        if nearestDist < 8 then
-            hum:ChangeState(Enum.HumanoidStateType.Jumping)
-            task.wait(0.2)
+
+    if nearestCoin then
+        hum.WalkSpeed = 25
+        hum:MoveTo(nearestCoin.Position)
+
+        if shortestDistance < 3 then
+            if not jumpedCoins[nearestCoin] then
+                hum.Jump = true
+                jumpedCoins[nearestCoin] = true
+                task.delay(5, function() jumpedCoins[nearestCoin] = nil end)
+            end
+            local offset = Vector3.new(math.random(-1, 1), 0, math.random(-1, 1))
+            hum:MoveTo(nearestCoin.Position + offset)
         end
     else
-        hum.WalkSpeed = _G.Settings.WalkSpeed
+        hum.WalkSpeed = _G.Settings.WalkSpeed or 16
     end
 end
 
--- AUTO PICKUP مضمون
-local function GunMagnet()
+-- ==============================================
+-- Smart Gun Collector (يمسك المسدس عند موت الشريف)
+-- ==============================================
+local function AutoGunCollect()
     if not Features.AutoPickup then return end
+    
     local root = GetRoot()
     if not root then return end
-    local gun = nil
-    for _, v in pairs(Workspace:GetDescendants()) do
-        if v:IsA("Tool") and (v.Name == "Gun" or v.Name == "Revolver" or v.Name == "Pistol") then
-            gun = v; break
-        end
-    end
-    if gun then
-        local oldPos = root.CFrame
-        root.CFrame = gun:GetPivot() + Vector3.new(0, 2, 0)
-        task.wait(0.2)
-        pcall(function() firetouchinterest(root, gun, 0) firetouchinterest(root, gun, 1) end)
-        root.CFrame = oldPos
+
+    local gunDrop = workspace:FindFirstChild("GunDrop")
+    
+    if gunDrop and gunDrop:IsA("BasePart") then
+        local savedCFrame = root.CFrame
+        
+        root.CFrame = gunDrop.CFrame + Vector3.new(0, 2, 0)
+        
+        local grabTime = tick()
+        repeat
+            task.wait()
+            firetouchinterest(root, gunDrop, 0)
+            firetouchinterest(root, gunDrop, 1)
+        until not workspace:FindFirstChild("GunDrop") or tick() - grabTime > 1
+        
+        root.CFrame = savedCFrame
+        Notify("تم بنجاح", "تم أخذ المسدس والعودة لمكانك! 🔫")
     end
 end
 
@@ -452,8 +487,8 @@ AddButton(T3, "📌 سحب القاتل", function() local m = GetMurderer(); if
 AddButton(T3, "📌 سحب الشريف", function() local s = GetSheriff(); if s then PullAndFreeze(s) end end)
 AddButton(T3, "📋 قائمة اللاعبين", ShowPlayerList)
 
-AddToggle(T4, "💰 Auto Farm السريع", "AutoFarm")
-AddToggle(T4, "🔫 Auto Pickup", "AutoPickup")
+AddToggle(T4, "💰 Auto Farm الذكي", "AutoFarm")
+AddToggle(T4, "🔫 Auto Pickup الذكي", "AutoPickup")
 
 AddButton(T5, "🌐 Server Hop", ServerHop)
 AddButton(T5, "🔄 Rejoin", RejoinServer)
@@ -530,7 +565,7 @@ RunService.Heartbeat:Connect(function()
         if Features.RGB then TopBar.BackgroundColor3 = Color3.fromHSV(tick()%5/5, 1, 1) end
         
         if Features.AutoFarm then SmartCoinFarm() end
-        if Features.AutoPickup then GunMagnet() end
+        if Features.AutoPickup then AutoGunCollect() end
         
         if Features.AimLockBelly then
             local target = GetMurderer() or GetSheriff()
@@ -566,4 +601,4 @@ Player.CharacterAdded:Connect(function(char)
     if Features.NoClip then for _, v in pairs(char:GetDescendants()) do if v:IsA("BasePart") then v.CanCollide = false end end end
 end)
 
-Notify("CYBER DRAGON V24", "النسخة الذهبية النهائية جاهزة! 🐉🔥", 5)
+Notify("CYBER DRAGON V24", "النسخة النهائية مع نظام جمع المسدس الذكي! 🐉🔥", 5)
