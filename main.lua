@@ -1,7 +1,7 @@
 -- [[ CYBER DRAGON V22 - THE ULTIMATE ARABIC EDITION ]]
 -- المطور: عبد الله (Dev=abdullah)
 -- تيك توك: 7_v4n3x | تليجرام: abood_7ro
--- ملاحظة: تم دمج جميع الأزرار والوظائف (أكثر من 35 ميزة)
+-- ملاحظة: تم دمج جميع الأزرار والوظائف (أكثر من  ميزة)
 
 local Players = game:GetService("Players")
 local Lighting = game:GetService("Lighting")
