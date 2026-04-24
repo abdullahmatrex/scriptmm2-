@@ -35,34 +35,49 @@ local function GetMurdererTarget()
     for _, p in pairs(Players:GetPlayers()) do
         if p ~= Player and p.Character and p.Character:FindFirstChild("HumanoidRootPart") then
             local isM = p.Backpack:FindFirstChild("Knife") or p.Character:FindFirstChild("Knife")
-            if isM then
-                return p
-            end
+            if isM then return p end
         end
     end
     return nil
 end
 
--- [ FLY ]
+-- [ FLY للجوال - نسخة الأزرار الظاهرة ]
 local function HandleFly()
     if Features.Fly then
         if flyConn then flyConn:Disconnect() end
         if PlayerGui:FindFirstChild("FlyUI") then PlayerGui.FlyUI:Destroy() end
         
-        local fg = Instance.new("ScreenGui", PlayerGui); fg.Name = "FlyUI"; fg.ResetOnSpawn = false
+        local fg = Instance.new("ScreenGui", PlayerGui)
+        fg.Name = "FlyUI"
+        fg.DisplayOrder = 999
+        fg.ResetOnSpawn = false
+        
+        local btnFrame = Instance.new("Frame", fg)
+        btnFrame.Size = UDim2.new(0, 150, 0, 150)
+        btnFrame.Position = UDim2.new(0.05, 0, 0.4, 0)
+        btnFrame.BackgroundTransparency = 1
+
         local btns = {
-            {N="▲", P=UDim2.new(0.05,0,0.4,0), D=Vector3.new(0,1,0)},
-            {N="▼", P=UDim2.new(0.05,0,0.55,0), D=Vector3.new(0,-1,0)},
-            {N="⇧", P=UDim2.new(0.85,0,0.4,0), D=Vector3.new(0,0,-1)},
-            {N="⇩", P=UDim2.new(0.85,0,0.55,0), D=Vector3.new(0,0,1)},
-            {N="◄", P=UDim2.new(0.77,0,0.48,0), D=Vector3.new(-1,0,0)},
-            {N="►", P=UDim2.new(0.93,0,0.48,0), D=Vector3.new(1,0,0)},
+            {N="▲", P=UDim2.new(0.35,0,0,0), D=Vector3.new(0,1,0)},
+            {N="▼", P=UDim2.new(0.35,0,0.7,0), D=Vector3.new(0,-1,0)},
+            {N="⇧", P=UDim2.new(0.35,0,0.35,0), D=Vector3.new(0,0,-1)},
+            {N="⇩", P=UDim2.new(0.35,0,-0.35,0), D=Vector3.new(0,0,1)},
+            {N="◄", P=UDim2.new(0,0,0.35,0), D=Vector3.new(-1,0,0)},
+            {N="►", P=UDim2.new(0.7,0,0.35,0), D=Vector3.new(1,0,0)},
         }
+
         for _, i in pairs(btns) do
-            local b = Instance.new("TextButton", fg)
-            b.Size = UDim2.new(0,50,0,50); b.Position = i.P; b.Text = i.N
-            b.BackgroundColor3 = Color3.new(0,0,0); b.TextColor3 = Color3.new(0,1,0); b.BackgroundTransparency = 0.4
+            local b = Instance.new("TextButton", btnFrame)
+            b.Size = UDim2.new(0, 45, 0, 45)
+            b.Position = i.P
+            b.Text = i.N
+            b.BackgroundColor3 = Color3.fromRGB(138, 43, 226)
+            b.TextColor3 = Color3.new(1, 1, 1)
+            b.Font = Enum.Font.GothamBold
+            b.TextSize = 20
+            b.ZIndex = 10
             Instance.new("UICorner", b)
+            
             b.MouseButton1Down:Connect(function() moveDir = i.D end)
             b.MouseButton1Up:Connect(function() moveDir = Vector3.zero end)
             b.TouchStarted:Connect(function() moveDir = i.D end)
@@ -74,12 +89,17 @@ local function HandleFly()
             if not r then return end
             local bv = r:FindFirstChild("FlyVel") or Instance.new("BodyVelocity", r)
             bv.Name = "FlyVel"; bv.MaxForce = Vector3.new(9e9,9e9,9e9)
-            if moveDir == Vector3.zero then bv.Velocity = Vector3.new(0,1.5,0); return end
-            local cam = workspace.CurrentCamera; local vel = Vector3.zero
-            if moveDir.Z ~= 0 then vel += cam.CFrame.LookVector * -moveDir.Z end
-            if moveDir.X ~= 0 then vel += cam.CFrame.RightVector * moveDir.X end
-            if moveDir.Y ~= 0 then vel += Vector3.new(0,moveDir.Y,0) end
-            bv.Velocity = vel * _G.Settings.FlySpeed
+            
+            if moveDir == Vector3.zero then 
+                bv.Velocity = Vector3.new(0, 0.1, 0)
+            else
+                local cam = workspace.CurrentCamera
+                local vel = Vector3.zero
+                if moveDir.Z ~= 0 then vel += cam.CFrame.LookVector * -moveDir.Z end
+                if moveDir.X ~= 0 then vel += cam.CFrame.RightVector * moveDir.X end
+                if moveDir.Y ~= 0 then vel += Vector3.new(0, moveDir.Y, 0) end
+                bv.Velocity = vel * _G.Settings.FlySpeed
+            end
         end)
     else
         if flyConn then flyConn:Disconnect(); flyConn = nil end
@@ -89,17 +109,20 @@ local function HandleFly()
     end
 end
 
--- [ AUTO FARM - أسرع مع قفز ]
+-- [ AUTO FARM - تجميع العملات ]
 local function AutoFarmCoins()
+    if not Features.AutoFarm then return end
     local root = GetRoot()
-    local hum = GetHum()
-    if not root or not hum then return end
+    if not root then return end
+    
     for _, v in pairs(Workspace:GetDescendants()) do
-        if (v.Name == "Coin" or v.Name:find("Coin")) and v:IsA("BasePart") then
-            root.CFrame = v.CFrame + Vector3.new(0,3,0)
-            task.wait(0.01)
-            hum:ChangeState(Enum.HumanoidStateType.Jumping)
-            return
+        if (v.Name == "Coin" or v.Name == "CoinContainer") and v:IsA("BasePart") then
+            if Features.AutoFarm then
+                root.CFrame = v.CFrame
+                firetouchinterest(root, v, 0)
+                firetouchinterest(root, v, 1)
+                task.wait(0.01) 
+            end
         end
     end
 end
@@ -135,18 +158,15 @@ local function ShootAndFreeze()
     local head = target.Character:FindFirstChild("Head")
     if not tRoot or not head then return end
     
-    -- سحب القاتل قدامي وتجميده وما يرجع
     tRoot.Anchored = true
     tRoot.CFrame = GetRoot().CFrame * CFrame.new(0, 0, -3)
     if tHum then tHum.WalkSpeed = 0 end
     
-    -- توجيه المسدس وضربه
     GetRoot().CFrame = CFrame.lookAt(GetRoot().Position, head.Position)
     task.wait(0.02)
     
     local remote = tool:FindFirstChild("RemoteEvent") or tool:FindFirstChild("Shoot") or tool:FindFirstChild("KnifeServer") or tool:FindFirstChild("Attack")
     if remote then
-        -- 3 طلقات متتالية عشان يموت
         for i = 1, 3 do
             remote:FireServer(head.Position)
             task.wait(0.05)
@@ -183,36 +203,55 @@ local function KillAll()
     Notify("قتل", "تم إعدام السيرفر بنجاح!")
 end
 
--- [ تحذير فوق راس القاتل ]
+-- [ كاشف الأدوار المطور - شريف وقاتل ]
 local function MurdererAlert()
     for _, p in pairs(Players:GetPlayers()) do
         if p ~= Player and p.Character and p.Character:FindFirstChild("Head") then
-            local isM = p.Backpack:FindFirstChild("Knife") or p.Character:FindFirstChild("Knife")
             local head = p.Character.Head
-            if isM then
-                if not head:FindFirstChild("MurdererWarning") then
-                    local bg = Instance.new("BillboardGui", head)
-                    bg.Name = "MurdererWarning"
-                    bg.Size = UDim2.new(0, 150, 0, 25)
-                    bg.StudsOffset = Vector3.new(0, 3, 0)
-                    bg.AlwaysOnTop = true
-                    local tl = Instance.new("TextLabel", bg)
-                    tl.Size = UDim2.new(1, 0, 1, 0)
-                    tl.BackgroundTransparency = 1
-                    tl.Text = "⚠️ قاتل - " .. p.Name
+            local isM = p.Backpack:FindFirstChild("Knife") or p.Character:FindFirstChild("Knife")
+            local isS = p.Backpack:FindFirstChild("Gun") or p.Character:FindFirstChild("Gun")
+            
+            if head:FindFirstChild("RoleTag") then head.RoleTag:Destroy() end
+
+            if isM or isS then
+                local bg = Instance.new("BillboardGui", head)
+                bg.Name = "RoleTag"
+                bg.Size = UDim2.new(0, 200, 0, 50)
+                bg.StudsOffset = Vector3.new(0, 3, 0)
+                bg.AlwaysOnTop = true
+                
+                local tl = Instance.new("TextLabel", bg)
+                tl.Size = UDim2.new(1, 0, 1, 0)
+                tl.BackgroundTransparency = 1
+                tl.TextSize = 16
+                tl.Font = Enum.Font.GothamBold
+                tl.TextStrokeTransparency = 0
+                
+                if isM then
+                    tl.Text = "⚠️ تحذير: هذا القاتل! ⚠️"
                     tl.TextColor3 = Color3.new(1, 0, 0)
-                    tl.TextSize = 14
-                    tl.Font = Enum.Font.GothamBold
-                    tl.TextStrokeTransparency = 0
-                end
-            else
-                if head:FindFirstChild("MurdererWarning") then
-                    head.MurdererWarning:Destroy()
+                elseif isS then
+                    tl.Text = "🛡️ الشريف (معه سلاح) 🛡️"
+                    tl.TextColor3 = Color3.new(0, 0, 1)
                 end
             end
         end
     end
 end
+
+-- [ NoClip مستمر ]
+RunService.Stepped:Connect(function()
+    if Features.NoClip then
+        local char = GetChar()
+        if char then
+            for _, v in pairs(char:GetDescendants()) do
+                if v:IsA("BasePart") and v.CanCollide == true then
+                    v.CanCollide = false
+                end
+            end
+        end
+    end
+end)
 
 -- [ UI ]
 local MainGui = Instance.new("ScreenGui", PlayerGui); MainGui.ResetOnSpawn = false
@@ -312,8 +351,26 @@ AddToggle(P3, "⚡ AntiLag", "AntiLag", function(s)
 end)
 AddButton(P3, "💾 حفظ", function() savedPos = GetRoot().CFrame end)
 AddButton(P3, "🔄 استرجاع", function() if savedPos then GetRoot().CFrame = savedPos end end)
-AddButton(P3, "🎭 تنكر", function()
-    for _,p in pairs(Players:GetPlayers()) do if p ~= Player then Player.DisplayName = p.DisplayName; return end end
+AddButton(P3, "🎭 تنكر عشوائي (للکل)", function()
+    local allPlayers = Players:GetPlayers()
+    local target = nil
+    for i = 1, 10 do
+        local p = allPlayers[math.random(1, #allPlayers)]
+        if p ~= Player then target = p; break end
+    end
+    if target and target.Character and target.Character:FindFirstChild("Humanoid") then
+        pcall(function()
+            local hum = GetHum()
+            local desc = Players:GetHumanoidDescriptionFromUserId(target.UserId)
+            if hum and desc then
+                hum:ApplyDescription(desc)
+                Player.DisplayName = target.DisplayName
+                Notify("تنكر", "أنت الآن تتنكر بشكل: " .. target.DisplayName)
+            end
+        end)
+    else
+        Notify("خطأ", "لم نجد لاعب مناسب للتنكر!")
+    end
 end)
 AddButton(P3, "🔓 إعادة اسم", function() Player.DisplayName = Player.Name end)
 
@@ -321,9 +378,22 @@ AddButton(P3, "🔓 إعادة اسم", function() Player.DisplayName = Player.N
 AddToggle(P4, "🌫️ Blur", "Blur", function(s) 
     local b = Lighting:FindFirstChildOfClass("BlurEffect") or Instance.new("BlurEffect", Lighting); b.Size = s and 15 or 0
 end)
-AddButton(P4, "🌌 سماء", function() 
-    local s = Lighting:FindFirstChildOfClass("Sky") or Instance.new("Sky", Lighting)
-    s.SkyboxBk = "rbxassetid://159454299"; Lighting.ClockTime = 0
+AddButton(P4, "🌌 فضاء كوني (زحل والأرض)", function() 
+    for _, v in pairs(Lighting:GetChildren()) do
+        if v:IsA("Sky") or v:IsA("Atmosphere") or v:IsA("Clouds") then v:Destroy() end
+    end
+    local sky = Instance.new("Sky", Lighting)
+    sky.SkyboxBk = "rbxassetid://12064107"
+    sky.SkyboxDn = "rbxassetid://12064115"
+    sky.SkyboxFt = "rbxassetid://12064121"
+    sky.SkyboxLf = "rbxassetid://12064127"
+    sky.SkyboxRt = "rbxassetid://12064133"
+    sky.SkyboxUp = "rbxassetid://12064139"
+    Lighting.ClockTime = 14
+    Lighting.Brightness = 3
+    Lighting.OutdoorAmbient = Color3.fromRGB(150, 150, 150)
+    Lighting.GlobalShadows = false
+    Notify("الثيم", "تم تفعيل فضاء السايبر دراغون! 🪐🌍")
 end)
 AddButton(P4, "🌈 RGB", function() 
     spawn(function() while task.wait(0.1) do Title.TextColor3 = Color3.fromHSV(tick()%5/5, 1, 1) end end)
@@ -361,7 +431,6 @@ RunService.Heartbeat:Connect(function()
         
         if Features.GodMode and h then h.MaxHealth = 9e9; h.Health = 9e9 end
         if Features.Speed and h then h.WalkSpeed = _G.Settings.WalkSpeed end
-        if Features.NoClip then for _,v in pairs(GetChar():GetDescendants()) do if v:IsA("BasePart") then v.CanCollide = false end end end
         if Features.Reach then local t = GetChar():FindFirstChildWhichIsA("Tool"); if t and t:FindFirstChild("Handle") then t.Handle.Size = Vector3.new(_G.Settings.ReachSize,_G.Settings.ReachSize,_G.Settings.ReachSize); t.Handle.CanCollide = false end end
         if Features.KillAura then local t = GetMurdererTarget(); if t and (r.Position - t.Character.HumanoidRootPart.Position).Magnitude < 15 then
             local tool = GetChar():FindFirstChildWhichIsA("Tool")
@@ -404,7 +473,6 @@ Player.CharacterAdded:Connect(function(char)
     if Features.Fly then flyConn = nil; if PlayerGui:FindFirstChild("FlyUI") then PlayerGui.FlyUI:Destroy() end; Features.Fly = true; HandleFly() end
     if Features.Speed and hum then hum.WalkSpeed = _G.Settings.WalkSpeed end
     if Features.GodMode and hum then hum.MaxHealth = 9e9; hum.Health = 9e9 end
-    if Features.NoClip then for _,v in pairs(char:GetDescendants()) do if v:IsA("BasePart") then v.CanCollide = false end end end
 end)
 
 Notify("Cyber Dragon V22", "جاهز يا عبدالله! 🐉", 3)
